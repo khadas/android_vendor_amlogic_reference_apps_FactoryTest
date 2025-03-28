@@ -1,6 +1,5 @@
 package cn.com.factorytest;
 
-import android.app.Fragment;
 import android.content.Context;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
@@ -16,142 +15,153 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.VideoView;
 import android.os.Build;
-
+import android.os.SystemClock;
 import java.io.IOException;
 
 import java.util.Date;
 
-public class VideoFragment extends Fragment implements MediaPlayer.OnCompletionListener {
-
+public class VideoFragment extends android.app.Fragment {
     private static final String TAG = Tools.TAG;
-    private String uri = "";
-    TextView mTestTime;
-    VideoView mVideoView;
-    Context mContext;
-    Date m_StartDate = new Date();
-    Handler mVideoHandler = new VideoHandler();
-    final int MSG_UPDATE_TIME = 0;
+    private static final int MSG_UPDATE_TIME = 0;
+    private static final int RETRY_DELAY = 3000;
+
+    private VideoView mVideoView;
+    private TextView mTestTime;
+    private String mVideoUri;
+    private long m_StartTime = SystemClock.elapsedRealtime();
     static int ageing_test_step = 0;
     static int led_status = 0;
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == MSG_UPDATE_TIME) {
+                updateTestTime();
+                sendEmptyMessageDelayed(MSG_UPDATE_TIME, 1000);
+            }
+        }
+    };
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        mContext = getActivity();
-    }
-
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_video, container, false);
     }
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        mVideoView = (VideoView) view.findViewById(R.id.VideoView);
-        mTestTime = (TextView) view.findViewById(R.id.TestTime);
-        uri = "android.resource://" + mContext.getPackageName() + "/" + R.raw.testvideo;
-        mVideoView.setVideoURI(Uri.parse(uri));
-        mVideoView.start();
-        mVideoView.setOnPreparedListener(new OnPreparedListener() {
+        super.onViewCreated(view, savedInstanceState);
+        mVideoView = view.findViewById(R.id.VideoView);
+        mTestTime = view.findViewById(R.id.TestTime);
 
-            @Override
-            public void onPrepared(MediaPlayer mp) {
-                // TODO Auto-generated method stub
-                Log.i(TAG, "mVideoView player is onPrepared !!! ");
-                mp.start();// 播放
-                mp.setLooping(true);
-            }
+        initVideoPlayer();
+    }
 
+    private void initVideoPlayer() {
+        mVideoUri = "android.resource://" + getActivity().getPackageName() + "/" + R.raw.testvideo;
+
+        mVideoView.setOnPreparedListener(mp -> {
+            Log.i(TAG, "Video prepared");
+            mp.setLooping(true);
+            mp.start();
         });
 
-        mVideoView.setOnCompletionListener(new OnCompletionListener() {
-
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                // TODO Auto-generated method stub
-                Log.i(TAG, "mVideoView player is end !!! ");
-                mVideoView.setVideoURI(Uri.parse(uri));
-                mVideoView.start();
-            }
-
+        mVideoView.setOnErrorListener((mp, what, extra) -> {
+            Log.e(TAG, "Playback error: " + what + "/" + extra);
+            retryPlayback();
+            return true;
         });
+
+        startPlayback();
+    }
+
+    private void startPlayback() {
+        try {
+            mVideoView.setVideoURI(Uri.parse(mVideoUri));
+            mVideoView.start();
+        } catch (Exception e) {
+            Log.e(TAG, "Video init failed", e);
+            retryPlayback();
+        }
+    }
+
+    private void retryPlayback() {
+        mHandler.postDelayed(() -> {
+            Log.w(TAG, "Retrying video playback");
+            startPlayback();
+        }, RETRY_DELAY);
+    }
+
+    public void resumePlayback() {
+        if (!mVideoView.isPlaying()) {
+            mVideoView.resume();
+        }
+    }
+
+    private void updateTestTime() {
+	    if (1 == MainActivity.ageing_flag) {
+	        if (2 == ageing_test_step && 2 != led_status) {
+            	if (MainActivity.test_board.equals("VIM4") || MainActivity.test_board.equals("VIM1S")) {
+	                try {
+	                    Tools.execCommand(new String[]{"sh", "-c", "echo 0 0 > /sys/class/leds/state_led/breath"});
+	                } catch (IOException e) {
+	                    e.printStackTrace();
+	                }
+	            } else {
+	                Tools.writeFile(Tools.White_Led, "heartbeat");//default-on off heartbeat
+	            }
+	            led_status = 2;
+	        } else {
+	            if (1 == led_status) {
+                	if (MainActivity.test_board.equals("VIM4") || MainActivity.test_board.equals("VIM1S")) {
+	                    try {
+	                        Tools.execCommand(new String[]{"sh", "-c", "echo 0 0 > /sys/class/leds/state_led/state_brightness"});
+	                    } catch (IOException e) {
+	                        e.printStackTrace();
+	                    }
+	                } else {
+	                    Tools.writeFile(Tools.White_Led, "off");//default-on off heartbeat
+	                }
+	                led_status = 0;
+	            } else if (0 == led_status) {
+                	if (MainActivity.test_board.equals("VIM4") || MainActivity.test_board.equals("VIM1S")) {
+	                    try {
+	                        Tools.execCommand(new String[]{"sh", "-c", "echo 0 255 > /sys/class/leds/state_led/state_brightness"});
+	                    } catch (IOException e) {
+	                        e.printStackTrace();
+	                    }
+	                } else {
+	                    Tools.writeFile(Tools.White_Led, "default-on");//default-on off heartbeat
+	                }
+	                led_status = 1;
+	            }
+	        }
+	    }
+	    mTestTime.setText(getTime());
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        mVideoHandler.sendEmptyMessage(MSG_UPDATE_TIME);
+        mHandler.sendEmptyMessage(MSG_UPDATE_TIME);
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        mVideoHandler.removeMessages(MSG_UPDATE_TIME);
+        mHandler.removeMessages(MSG_UPDATE_TIME);
         mVideoView.pause();
-        mVideoView.stopPlayback();
     }
 
     @Override
-    public void onCompletion(MediaPlayer mp) {
-        mVideoView.seekTo(0);
+    public void onDestroyView() {
+        super.onDestroyView();
+        mVideoView.stopPlayback();
     }
-
-    class VideoHandler extends Handler {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MSG_UPDATE_TIME:
-                    if (1 == MainActivity.ageing_flag) {
-                        if (2 == ageing_test_step && 2 != led_status) {
-                            if (MainActivity.test_board.equals("VIM4")) {
-                                try {
-                                    Tools.execCommand(new String[]{"sh", "-c", "echo 0 0 > /sys/class/leds/state_led/breath"});
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            } else {
-                                Tools.writeFile(Tools.White_Led, "heartbeat");//default-on off heartbeat
-                            }
-                            led_status = 2;
-                        } else {
-                            if (1 == led_status) {
-                                if (MainActivity.test_board.equals("VIM4")) {
-                                    try {
-                                        Tools.execCommand(new String[]{"sh", "-c", "echo 0 0 > /sys/class/leds/state_led/state_brightness"});
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                    }
-                                } else {
-                                    Tools.writeFile(Tools.White_Led, "off");//default-on off heartbeat
-                                }
-                                led_status = 0;
-                            } else if (0 == led_status) {
-                                if (MainActivity.test_board.equals("VIM4")) {
-                                    try {
-                                        Tools.execCommand(new String[]{"sh", "-c", "echo 0 255 > /sys/class/leds/state_led/state_brightness"});
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                    }
-                                } else {
-                                    Tools.writeFile(Tools.White_Led, "default-on");//default-on off heartbeat
-                                }
-                                led_status = 1;
-                            }
-                        }
-                    }
-                    mTestTime.setText(getTime());
-                    mVideoHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, 1000);
-                    break;
-            }
-        }
-    }
-
-    ;
 
     private String getTime() {
         Date newDate = new Date();
 
-        long between = (newDate.getTime() - m_StartDate.getTime()) / 1000;
+        long between = (SystemClock.elapsedRealtime() - m_StartTime) / 1000;
         long day1 = between / (24 * 3600);
         long hour1 = between % (24 * 3600) / 3600;
         long hour_ageing = between / 3600;
@@ -162,15 +172,18 @@ public class VideoFragment extends Fragment implements MediaPlayer.OnCompletionL
             if ((hour_ageing >= MainActivity.ageing_time) && 1 == ageing_test_step) {
                 Tools.writeFile(Tools.ageing_status, "1");
                 ageing_test_step = 2;
-            } else if (0 == ageing_test_step) {
+            } else if (1 == MainActivity.ageing_time && 1 == ageing_test_step && minute1 >= MainActivity.ageing_time) {
+                Tools.writeFile(Tools.ageing_status, "1");
+                ageing_test_step = 2;
+            }else if (0 == ageing_test_step) {
                 Tools.writeFile(Tools.ageing_status, "0");
                 ageing_test_step = 1;
             }
         }
-        if (between > (60 * 60 * 2)) {
+        if (between > (60 * 60 * MainActivity.ageing_time)) {
             return getResources().getString(R.string.long_test_finish);
         } else {
-            return "" + day1 + " : " + hour1 + " : " + minute1 + " : " + second1;
+            return String.format("%d : %02d : %02d : %02d", day1, Math.abs(hour1), Math.abs(minute1), Math.abs(second1));
         }
     }
 }

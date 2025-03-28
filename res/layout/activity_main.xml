@@ -80,7 +80,14 @@
                         android:text="@string/SPI_Test"
                         android:textColor="#FF5555FF"
                         android:textSize="18sp"></TextView>
-
+                    <TextView
+                        android:id="@+id/TextView_KEY"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="@string/KEY_Test"
+                        android:textColor="#FF5555FF"
+                        android:textSize="18sp"></TextView>
                     <TextView
                         android:id="@+id/TextView_GSENSOR"
                         android:layout_width="match_parent"
@@ -273,6 +280,30 @@
                     android:textColor="@android:color/white"
                     android:textSize="18sp"></Button>
 
+                    <Button
+                        android:onClick="Mipi_LCD"
+                        android:id="@+id/Mipi_LCD"
+                        android:paddingLeft="20dp"
+                        android:layout_width="200dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="@string/Mipi_LCD_Test"
+                        android:textSize="20sp"
+                        android:textColor="@android:color/white">
+                    </Button>
+
+                    <Button
+                        android:onClick="TP_Test"
+                        android:id="@+id/TP_Test"
+                        android:paddingLeft="20dp"
+                        android:layout_width="200dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="@string/TP_Test"
+                        android:textSize="20sp"
+                        android:textColor="@android:color/white">
+                    </Button>
+
                 <Button
                     android:id="@+id/Button_Writemac"
                     android:layout_width="200dp"
@@ -342,7 +373,6 @@
             android:text="@string/showmac"
             android:textColor="@android:color/white"
             android:textSize="22sp" />
-
         <TextView
             android:id="@+id/mac_value"
             android:layout_width="wrap_content"
@@ -369,7 +399,7 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/Layout_Bottom3"
+        android:id="@+id/Layout_Bottom2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
@@ -377,6 +407,116 @@
         android:layout_marginRight="0dp"
         android:layout_marginBottom="30dp"
         android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/mcu_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/mcu_version"
+            android:textColor="@android:color/white"
+            android:textSize="25sp"/>
+
+        <TextView
+            android:id="@+id/mcu_version_value"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:layout_marginLeft="6dp"
+            android:textColor="@color/red"
+            android:textSize="22sp"/>
+
+        <TextView
+            android:id="@+id/device_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/showdeivceid"
+            android:textColor="@android:color/white"
+	    android:visibility="gone"
+            android:textSize="22sp" />
+
+        <TextView
+            android:id="@+id/device_id_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="6dp"
+            android:textColor="@android:color/white"
+	    android:visibility="gone"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/device_type"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="20dp"
+            android:text="@string/device_type"
+            android:textColor="@android:color/white"
+            android:textSize="22sp" />
+
+        <TextView
+            android:id="@+id/device_type_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="6dp"
+            android:textColor="@color/red"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/sn_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="20dp"
+            android:text="@string/showsn"
+            android:textColor="@android:color/white"
+            android:textSize="22sp" />
+
+        <TextView
+            android:id="@+id/sn_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="6dp"
+            android:textColor="@android:color/white"
+            android:textSize="18sp" />
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:id="@+id/Layout_Bottom3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="0dp"
+        android:layout_marginBottom="60dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/firmware_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/firmware_version"
+            android:textColor="@android:color/white"
+            android:textSize="22sp" />
+
+        <TextView
+            android:id="@+id/firmware_version_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="6dp"
+            android:textColor="@color/red"
+            android:textSize="18sp" />
+
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/Layout_Bottom4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="0dp"
+        android:layout_marginBottom="30dp"
+        android:gravity="center_vertical"
+        android:visibility="gone">
 
         <TextView
             android:id="@+id/wifi_mac_label"
@@ -413,52 +553,7 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/Layout_Bottom2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginRight="0dp"
-        android:layout_marginBottom="60dp"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/firmware_version"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/firmware_version"
-            android:textColor="@android:color/white"
-            android:textSize="22sp" />
-
-        <TextView
-            android:id="@+id/firmware_version_value"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="6dp"
-            android:textColor="@color/red"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/device_type"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="20dp"
-            android:text="@string/device_type"
-            android:textColor="@android:color/white"
-            android:textSize="22sp" />
-
-        <TextView
-            android:id="@+id/device_type_value"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="6dp"
-            android:textColor="@color/red"
-            android:textSize="18sp" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/Layout_Bottom4"
+        android:id="@+id/Layout_Bottom5"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
@@ -500,51 +595,6 @@
             android:textColor="@color/red"
             android:textSize="18sp" />
 
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/Layout_Bottom5"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginRight="0dp"
-        android:layout_marginBottom="120dp"
-        android:gravity="center_vertical"
-        android:visibility="gone">
-
-        <TextView
-            android:id="@+id/device_id"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/showdeivceid"
-            android:textColor="@android:color/white"
-            android:textSize="22sp" />
-
-        <TextView
-            android:id="@+id/device_id_value"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="6dp"
-            android:textColor="@android:color/white"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/sn_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="20dp"
-            android:text="@string/showsn"
-            android:textColor="@android:color/white"
-            android:textSize="22sp" />
-
-        <TextView
-            android:id="@+id/sn_value"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="6dp"
-            android:textColor="@android:color/white"
-            android:textSize="18sp" />
     </LinearLayout>
 
     <LinearLayout

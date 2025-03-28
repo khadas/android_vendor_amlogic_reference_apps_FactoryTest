@@ -11,7 +11,7 @@ LOCAL_JNI_SHARED_LIBRARIES := libserial_port_jni
 
 
 LOCAL_PRIVATE_PLATFORM_APIS := true
-
+LOCAL_STATIC_ANDROID_LIBRARIES += androidx.appcompat_appcompat
 include $(BUILD_PACKAGE)
 
 include $(call all-makefiles-under, $(LOCAL_PATH))

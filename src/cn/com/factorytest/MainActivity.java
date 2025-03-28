@@ -70,9 +70,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     public static final String TAG = Tools.TAG;
 
     public static String test_board="VIM4";
-
+	public static String udisk_backup = "";
     public static boolean tfcard_test = false;
     public static boolean usb20_test = false;
+    public static boolean hdmi_sound_test = true;
     public static boolean usb30_test = false;
     public static boolean spi_test = false;
     public static boolean gsensor_test = false;
@@ -93,11 +94,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     public static boolean mic_test = false;
     public static boolean mipi_camera_test = false;
     public static boolean board_key_test = false;
+    public static boolean key_test = false;
+    public static boolean mipi_lcd_test = false;
+    public static boolean tp_test = false;
     public static boolean reset_mcu = false;
     public static boolean wirte_mac = false;
+    public static boolean wirte_sn = false;
+	public static boolean burn_efuse_flag = false;
 
     private static boolean ageing_test_ok_flag = false;
-
+	TextView m_mcu_version;
     TextView m_firmware_version;
     TextView m_ddr_size;
     TextView m_nand_size;
@@ -120,6 +126,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     TextView m_TextView_SPI;
     TextView m_TextView_MCU;
     TextView m_TextView_HDMI;
+	TextView m_TextView_KEY;
     TextView m_TextView_GSENSOR;
     TextView m_TextView_AGEING;
     TextView m_TextView_FUSB302;
@@ -141,6 +148,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     Button m_Button_reset_MCU;
     Button m_Button_MIC;
     Button m_Button_Mipi_Camera;
+    Button m_Button_Mipi_LCD;
+    Button m_Button_TP;
 
     Handler mHandler = new FactoryHandler();
 
@@ -186,16 +195,23 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private final int MSG_AGEING_TEST_ERROR = 116;
     private final int MSG_AGEING_TEST_OK = 117;
     private final int MSG_GET_CPU_STATUS = 118;
+    private final int MSG_KEY_TEST_ERROR = 125;
+    private final int MSG_KEY_TEST_OK = 126;
     private final int MSG_TIME = 777;
     private static final String nullip = "0.0.0.0";
     private static final String USB_PATH = (Tools.isAndroid5_1_1() ? "/storage/udisk" : "/storage/external_storage/sd");
     private static final String USB1_PATH = (Tools.isAndroid5_1_1() ? "/storage/udisk0" : "/storage/external_storage/sda");
     private static final String USB2_PATH = (Tools.isAndroid5_1_1() ? "/storage/udisk1" : "/storage/external_storage/sdb");
     private static final String TFCARD_PATH = (Tools.isAndroid5_1_1() ? "/storage/sdcard" : "/storage/external_storage/sdcard");
+	public static final String EXTRA_TEST_PROGRESS = "test progress";
+	public static final String EXTRA_TEST_RESULT_INFO = "test result info";
+
+	public static final String RESULT_INFO_HEAD = ";";
+	public static final String RESULT_INFO_HEAD_JUST_INFO = "just info;";
     private List<ScanResult> wifiList;
 
     String configSSID = "";
-    int configLevel = 60;
+    int configLevel = 30;
 
     int wifiLevel = 0;
     String usb_path = "";
@@ -228,6 +244,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     public static int ageing_flag = 0;
     public static int ageing_time = 0;
     public static int ageing_cpu_max = 0;
+	public static int key_flag = 0;
 
     private SurfaceView mSurfaceview = null;
     private SurfaceHolder mSurfaceHolder = null;
@@ -241,9 +258,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mAudioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
         maxVolume = mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         currentVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-        mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVolume, 0);
+        if(!hdmi_sound_test)
+            mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0);
+        else
+            mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVolume, 0);
 
-        initSurfaceView();
+        //initSurfaceView();
+        getFragmentManager().beginTransaction()
+            .replace(R.id.fragment_video, new VideoFragment())
+            .commit();
 
         m_firmware_version = (TextView) findViewById(R.id.firmware_version_value);
         m_device_type = (TextView) findViewById(R.id.device_type_value);
@@ -271,6 +294,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         m_TextView_MCU = (TextView) findViewById(R.id.TextView_MCU);
         m_TextView_SPI = (TextView) findViewById(R.id.TextView_SPI);
         m_TextView_HDMI = (TextView) findViewById(R.id.TextView_HDMI);
+		m_TextView_KEY = (TextView) findViewById(R.id.TextView_KEY);
         m_TextView_GSENSOR = (TextView) findViewById(R.id.TextView_GSENSOR);
         m_TextView_AGEING = (TextView) findViewById(R.id.TextView_AGEING);
         m_TextView_FUSB302 = (TextView) findViewById(R.id.TextView_FUSB302);
@@ -285,11 +309,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         m_Button_reset_MCU = (Button) findViewById(R.id.Button_RstMcu);
         m_Button_MIC = (Button) findViewById(R.id.speaker_MIC);
         m_Button_Mipi_Camera = (Button) findViewById(R.id.Mipi_Camera);
+        m_Button_Mipi_LCD = (Button) findViewById(R.id.Mipi_LCD);
+        m_Button_TP = (Button) findViewById(R.id.TP_Test);
 
         m_maccheck = (EditText) findViewById(R.id.EditTextMac);
         m_maccheck.setInputType(InputType.TYPE_NULL);
         m_maccheck.addTextChangedListener(mTextWatcher);
         m_mactitle = (TextView) findViewById(R.id.MacTitle);
+		m_mcu_version = (TextView)findViewById(R.id.mcu_version_value);
+		m_firmware_version = (TextView)findViewById(R.id.firmware_version_value);
+		if(MainActivity.burn_efuse_flag)
+			m_Button_write_mac_usid.setText(R.string.WriteMac2);
 
         if (!irkey_test) {
             m_Button_IRKey.setVisibility(View.GONE);
@@ -303,9 +333,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             m_Button_reset_MCU.setVisibility(View.GONE);
         }
 
-        m_Button_Mipi_Camera.setVisibility(View.GONE);
         if (!mipi_camera_test) {
-            mSurfaceview.setVisibility(View.GONE);
+            m_Button_Mipi_Camera.setVisibility(View.GONE);
+            //mSurfaceview.setVisibility(View.GONE);
         }
 
         if (!mcu_test) {
@@ -339,6 +369,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
         if (!hdmi_test) {
             m_TextView_HDMI.setVisibility(View.GONE);
+        }
+        if (!key_test) {
+            m_TextView_KEY.setVisibility(View.GONE);
         }
         if (!wirte_mac) {
             m_Button_write_mac_usid.setVisibility(View.GONE);
@@ -374,6 +407,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             m_TextView_Lan.setVisibility(View.GONE);
         }
 
+        if (!mipi_lcd_test) {
+            m_Button_Mipi_LCD.setVisibility(View.GONE);
+        }
+
+        if (!tp_test) {
+            m_Button_TP.setVisibility(View.GONE);
+        }
+
         mLeftLayout = (LinearLayout) findViewById(R.id.Layout_Left);
         mBottomLayout = (LinearLayout) findViewById(R.id.Layout_Bottom);
         mBottomLayout2 = (LinearLayout) findViewById(R.id.Layout_Bottom2);
@@ -385,6 +426,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         mWifiManager.setWifiEnabled(true);
 
+		if(key_test){
+			//Tools.exec("chmod 777 > /sys/class/gpio_keypad/key_test");
+			Tools.exec("echo 1 > /sys/class/gpio_keypad/keytest");
+		}
         updateTime();
         new Thread() {
             public void run() {
@@ -412,6 +457,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     try {
                         mHandler.sendEmptyMessage(MSG_GET_CPU_STATUS);
                         Thread.sleep(1000);
+						if(2 == VideoFragment.ageing_test_step && !ageing_test_ok_flag){
+							mHandler.sendEmptyMessage(MSG_AGEING_TEST_OK);
+							ageing_test_ok_flag = true;
+						}
+						else if(1 == VideoFragment.ageing_test_step && ageing_test_ok_flag){
+							mHandler.sendEmptyMessage(MSG_AGEING_TEST_ERROR);
+							ageing_test_ok_flag = false;
+						}
                     } catch (Exception localException1) {
                     }
                 }
@@ -488,18 +541,20 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         test_HDMI();
         test_Gigabit();
         test_SPI();
-        test_Wifi();
+		if(wifi_test)
+			test_Wifi();
 
     }
 
     private void registerBTReceiver() {
-
-        mBTDeviceReceiver = new BTDeviceReceiver();
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(BluetoothDevice.ACTION_FOUND);
-        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        mContext.registerReceiver(mBTDeviceReceiver, filter);
-        Log.d(TAG, "registerBTReceiver");
+		if (bt_test) {
+				mBTDeviceReceiver = new BTDeviceReceiver();
+				IntentFilter filter = new IntentFilter();
+				filter.addAction(BluetoothDevice.ACTION_FOUND);
+				filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+				mContext.registerReceiver(mBTDeviceReceiver, filter);
+				Log.d(TAG, "registerBTReceiver");
+		}
     }
 
     private class BTDeviceReceiver extends BroadcastReceiver {
@@ -566,10 +621,22 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     protected void onResume() {
         super.onResume();
         //readVersion();
-
+        VideoFragment fragment = (VideoFragment) getFragmentManager()
+            .findFragmentById(R.id.fragment_video);
+        if (fragment != null) {
+            fragment.resumePlayback();
+        }
         m_ddr_size.setText((Tools.getmem_TOLAL() * 100 / 1024 / 1024 / 100.0) + " GB");
         m_nand_size.setText(Tools.getRomSize(this));
-        if (MainActivity.test_board.equals("VIM4")) {
+
+        String mcuversion = Tools.exec("i2cget -f -y 6 0x18 0x13");
+        if (mcuversion != null && mcuversion.startsWith("0x")) {
+            String formattedVersion = "V" + mcuversion.substring(2).toUpperCase();
+            m_mcu_version.setText(formattedVersion);
+        } else {
+            m_mcu_version.setText("Error");
+        }
+        if (MainActivity.test_board.equals("VIM4") || MainActivity.test_board.equals("VIM1S")) {
             m_firmware_version.setText(Build.DISPLAY);
         } else {
             m_firmware_version.setText(Build.VERSION.INCREMENTAL);
@@ -592,11 +659,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mountfilter.addDataScheme("file");
         registerReceiver(mountReceiver, mountfilter);
 
-        if (MainActivity.test_board.equals("VIM4")) {
+        if (MainActivity.test_board.equals("VIM4") || MainActivity.test_board.equals("VIM1S")) {
             String strMac = Tools.getEthMac();
             if (strMac != null) {
                 int length = strMac.length();
-                if (length != 17) {
+                if (length != getResources().getInteger(R.integer.config_mac_length)) {
                     m_macvalue.setTextColor(Color.RED);
                     m_macvalue.setText("ERR");
                 } else {
@@ -611,7 +678,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             String strMac = Tools.getMac();
             if (strMac != null) {
                 int length = strMac.length();
-                if (length != 17) {
+                if (length != getResources().getInteger(R.integer.config_mac_length)) {
                     m_macvalue.setTextColor(Color.RED);
                     m_macvalue.setText("ERR");
                 } else {
@@ -626,7 +693,22 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 m_macvalue.setText("ERR");
             }
         }
-
+		if (MainActivity.wirte_sn) {
+			String strSn = Tools.getUsid();
+			Log.d(TAG,"strSn= " + strSn);
+			int length = strSn.length();
+			Log.d(TAG,"strSn length= " + length);
+			Log.d(TAG,"strSnxx= " + getResources().getInteger(R.integer.config_sn_length));
+			if (length != getResources().getInteger(R.integer.config_sn_length)) {
+				m_snvalue.setTextColor(Color.RED);
+				m_snvalue.setText("ERR");
+				Log.d(TAG,"xxx");
+			} else {
+				m_snvalue.setTextColor(Color.RED);
+				m_snvalue.setText(strSn + " ");
+				Log.d(TAG,"yyy");
+			}
+		}
         m_maccheck.requestFocus();
         int rec = 2;
         rec = Settings.System.getInt(mContext.getContentResolver(), "Khadas_mipi_camera_test", 2);
@@ -649,13 +731,20 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         } else if (rec == 0) {
             m_Button_IRKey.setTextColor(Color.RED);
         }
-        //set red led breath
-        //Tools.writeFile("/sys/class/mcu/redled","2");
-		/*try {
-			Tools.execCommand(new String[]{"sh", "-c", "echo 2 > /sys/class/mcu/redled"});
-		} catch (IOException e) {
-			e.printStackTrace();
-		}*/
+
+        rec = Settings.System.getInt(mContext.getContentResolver(), "Khadas_tp_test", 2);
+        if (rec == 1) {
+            m_Button_TP.setTextColor(Color.GREEN);
+        } else if (rec == 0) {
+            m_Button_TP.setTextColor(Color.RED);
+        }
+
+        rec = Settings.System.getInt(mContext.getContentResolver(), "Khadas_lcd_test", 2);
+        if (rec == 1) {
+            m_Button_Mipi_LCD.setTextColor(Color.GREEN);
+        } else if (rec == 0) {
+            m_Button_Mipi_LCD.setTextColor(Color.RED);
+        }
 
         //set fan level 3
         try {
@@ -696,11 +785,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     private void unregisterBTReceiver() {
-        Log.d(TAG, "[unregisterBTReceiver]BTReceiver");
-        if (mBTDeviceReceiver != null) {
-            unregisterReceiver(mBTDeviceReceiver);
-            mBTDeviceReceiver = null;
-        }
+		if (bt_test) {
+			Log.d(TAG, "[unregisterBTReceiver]BTReceiver");
+			if (mBTDeviceReceiver != null) {
+				unregisterReceiver(mBTDeviceReceiver);
+				mBTDeviceReceiver = null;
+			}
+		}
     }
 
     @Override
@@ -722,10 +813,25 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     public void rst_mcu(View view) {
-        Log.d(TAG, "rst_mcu()");
-        //Tools.writeFile(Tools.White_Led,"off");
-        //Tools.writeFile(Tools.Red_Led,"off");
+        String strSn = "";
+
+        Log.e(TAG, "hlm Restore_MCU_settings");
         Tools.writeFile("/sys/class/mcu/rst", "0");
+
+		strSn = Tools.getEthMac().replaceAll(":", "");
+		Log.e(TAG, "strSn : " + strSn);
+        String path = MainActivity.udisk_backup + "/Pictures/";
+        String cmd_val = "ls " + path;
+        Log.d(TAG, "cmd_val : " + cmd_val);
+        if(Tools.exec(cmd_val).contains("No such file or directory")){
+            cmd_val = "mkdir -p" + path;
+            Tools.exec(cmd_val);
+        }
+        cmd_val = "screencap -p " + path + strSn + ".png";
+        Log.d(TAG, "screencap cmd_val : " + cmd_val);
+        if(Tools.exec(cmd_val).contains("")){
+            m_Button_reset_MCU.setTextColor(Color.GREEN);
+        }
     }
 
     public void Write_mac_usid(View view) {
@@ -753,6 +859,18 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         startActivity(intent);
     }
 
+    public void Mipi_LCD(View view) {
+        Log.d(TAG, "Mipi_LCD()");
+        Intent intent = new Intent(this, MipiLCDTestActivity.class);
+        startActivity(intent);
+    }
+
+    public void TP_Test(View view) {
+        Log.d(TAG, "TP_Test()");
+        Intent intent = new Intent(this, TouchTestActivity.class);
+        startActivity(intent);
+    }
+
     public void EnableWol(View view) {
         Tools.writeFile("/sys/class/wol/test", "1");
         Tools.writeFile("/sys/class/wol/enable", "1");
@@ -764,17 +882,19 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     private void test_BT() {
-        try {
-            Thread.sleep(1000);
-        } catch (Exception localException1) {
-        }
+		if (bt_test) {
+			try {
+				Thread.sleep(1000);
+			} catch (Exception localException1) {
+			}
 
-        BTAdmin localBTAdmin = new BTAdmin();
-        registerBTReceiver();
-        localBTAdmin.OpenBT();
-        if (!localBTAdmin.ScanBT()) {
-            mHandler.sendEmptyMessage(MSG_BT_TEST_ERROR);
-        }
+			BTAdmin localBTAdmin = new BTAdmin();
+			registerBTReceiver();
+			localBTAdmin.OpenBT();
+			if (!localBTAdmin.ScanBT()) {
+				mHandler.sendEmptyMessage(MSG_BT_TEST_ERROR);
+			}
+		}
     }
 
     private void test_SPI() {
@@ -786,28 +906,27 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     private void test_FUSB302() {
-        try {
-            String rec = Tools.execCommand(new String[]{"sh", "-c", "i2cdump -f -y 6 0x22"});
-            if (!rec.contains("i2cdump:"))
-                mHandler.sendEmptyMessage(MSG_FUSB302_TEST_OK);
-            else
-                mHandler.sendEmptyMessage(MSG_FUSB302_TEST_ERROR);
-        } catch (IOException e) {
-            e.printStackTrace();
+		try {
+			String str1 = "0x91";
+			String rec = Tools.exec("i2cget -f -y 6 0x22 1");
+			Log.d(TAG, "hlm FUSB302:" + rec);
+			if(rec.contains(str1))
+				mHandler.sendEmptyMessage(MSG_FUSB302_TEST_OK);
+			else
+				mHandler.sendEmptyMessage(MSG_FUSB302_TEST_ERROR);
+        } catch (Exception localException1) {
         }
     }
 
-    private void test_MCU() {
-        try {
-            String rec = Tools.execCommand(new String[]{"sh", "-c", "i2cdump -f -y 6 0x18"});
-            if (!rec.contains("i2cdump:"))
-                mHandler.sendEmptyMessage(MSG_MCU_TEST_OK);
-            else
-                mHandler.sendEmptyMessage(MSG_MCU_TEST_ERROR);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+  private void test_MCU() {
+
+        File file = new File("/sys/class/mcu/ageing_test");
+        if (file.exists())
+            mHandler.sendEmptyMessage(MSG_MCU_TEST_OK);
+        else
+            mHandler.sendEmptyMessage(MSG_MCU_TEST_ERROR);
+  }
+
 
     private void test_HDMI() {
 
@@ -847,6 +966,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 Log.d(TAG, "hlm AGEING: " + id);
                 if (1 == id) {
                     ageing_test_ok_flag = true;
+					if (!ageing_test) {
+						m_TextView_AGEING.setVisibility(View.VISIBLE);
+					}
                     mHandler.sendEmptyMessage(MSG_AGEING_TEST_OK);
                     return;
                 }
@@ -965,7 +1087,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void test_Wifi() {
         boolean bWifiScaned = false;
         try {
-            Thread.sleep(2000);
+            Thread.sleep(1000);
         } catch (Exception localException1) {
         }
         configSSID = getResources().getString(R.string.config_ap_ssid);
@@ -1052,7 +1174,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             tmp[num] = tmp[num] + list[z];
         }
         for (int i = 0; i < tmp.length; i++) {
-            if (MainActivity.test_board.equals("VIM1") || MainActivity.test_board.equals("VIM2")) {
+            if (MainActivity.test_board.equals("VIM1S") || MainActivity.test_board.equals("VIM2")) {
                 if ((tmp[i].indexOf("(O)") != -1) && (tmp[i].indexOf("Bus=01") != -1) && (tmp[i].indexOf("Port=02") != -1)) {
                     Log.d("TAG", "USB2.0 port 1 is OK");
                     mHandler.sendEmptyMessage(MSG_USB1_TEST_XL_OK);
@@ -1343,7 +1465,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 break;
 
                 case MSG_AGEING_TEST_ERROR: {
-                    String strTxt = getResources().getString(R.string.AGEING_Test) + "    " + getResources().getString(R.string.Test_Fail);
+                    String strTxt = getResources().getString(R.string.AGEING_Test) + "    " + getResources().getString(R.string.Test_In);
 
                     m_TextView_AGEING.setText(strTxt);
                     m_TextView_AGEING.setTextColor(0xFFFF5555);
@@ -1386,6 +1508,43 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     Log.d(TAG, "MSG_SPI_TEST_ERROR");
                 }
                 break;
+
+                case MSG_KEY_TEST_OK: {
+					String strTxt = getResources().getString(R.string.KEY_Test);
+					if(key_test){
+
+						strTxt = strTxt + "    " + getResources().getString(R.string.KEY_Test_1_Ok)
+							+ "    " + getResources().getString(R.string.KEY_Test_2_Ok);
+					}else{
+						strTxt = strTxt + "    " + getResources().getString(R.string.Test_Ok);
+					}
+                    m_TextView_KEY.setText(strTxt);
+                    m_TextView_KEY.setTextColor(0xFF55FF55);
+                }
+                break;
+
+                case MSG_KEY_TEST_ERROR: {
+					String strTxt = getResources().getString(R.string.KEY_Test);
+					if(key_test){
+						if(key_flag == 0x1)
+							strTxt = strTxt + "    " + getResources().getString(R.string.KEY_Test_1_Ok);
+						else
+							strTxt = strTxt + "    " + getResources().getString(R.string.KEY_Test_1_Fail);
+
+						if(key_flag == 0x2)
+							strTxt = strTxt + "    " + getResources().getString(R.string.KEY_Test_2_Ok);
+						else
+							strTxt = strTxt + "    " + getResources().getString(R.string.KEY_Test_2_Fail);
+					}else{
+						strTxt = strTxt + "    " + getResources().getString(R.string.Test_Fail);
+					}
+
+                    m_TextView_KEY.setText(strTxt);
+                    m_TextView_KEY.setTextColor(0xFFFF5555);
+                    Log.d(TAG, "MSG_KEY_TEST_ERROR");
+                }
+                break;
+
                 case MSG_MCU_TEST_OK: {
                     String strTxt = getResources().getString(R.string.MCU_Test) + "    " + getResources().getString(R.string.Test_Ok);
 
@@ -1511,7 +1670,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                 case MSG_USB1_TEST_XL_ERROR: {
                     String strTxt = "";
-                    if (MainActivity.test_board.equals("VIM1") || MainActivity.test_board.equals("VIM2")) {
+                    if (MainActivity.test_board.equals("VIM1S") || MainActivity.test_board.equals("VIM2")) {
                         strTxt = getResources().getString(R.string.USB1_Test_Other)
                                 + "    " + getResources().getString(R.string.Test_Fail);
                     } else {
@@ -1525,7 +1684,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                 case MSG_USB1_TEST_XL_OK: {
                     String strTxt = "";
-                    if (MainActivity.test_board.equals("VIM1") || MainActivity.test_board.equals("VIM2")) {
+                    if (MainActivity.test_board.equals("VIM1S") || MainActivity.test_board.equals("VIM2")) {
                         strTxt = getResources().getString(R.string.USB1_Test_Other)
                                 + "    " + getResources().getString(R.string.Test_Ok);
                     } else {
@@ -1539,7 +1698,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                 case MSG_USB2_TEST_XL_ERROR: {
                     String strTxt = "";
-                    if (MainActivity.test_board.equals("VIM1") || MainActivity.test_board.equals("VIM2")) {
+                    if (MainActivity.test_board.equals("VIM1S") || MainActivity.test_board.equals("VIM2")) {
                         strTxt = getResources().getString(R.string.USB2_Test_Other) + "    " + getResources().getString(R.string.Test_Fail);
                     } else {
                         strTxt = getResources().getString(R.string.USB2_Test) + "    " + getResources().getString(R.string.Test_Fail);
@@ -1551,7 +1710,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
                 case MSG_USB2_TEST_XL_OK: {
                     String strTxt = "";
-                    if (MainActivity.test_board.equals("VIM1") || MainActivity.test_board.equals("VIM2")) {
+                    if (MainActivity.test_board.equals("VIM1S") || MainActivity.test_board.equals("VIM2")) {
                         strTxt = getResources().getString(R.string.USB2_Test_Other) + "    " + getResources().getString(R.string.Test_Ok);
                     } else {
                         strTxt = getResources().getString(R.string.USB2_Test) + "    " + getResources().getString(R.string.Test_Ok);
@@ -1735,10 +1894,31 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mBottomLayout.setVisibility(View.VISIBLE);
         mBottomLayout2.setVisibility(View.VISIBLE);
         mBottomLayout3.setVisibility(View.VISIBLE);
-        mBottomLayout4.setVisibility(View.VISIBLE);
-        //mBottomLayout5.setVisibility(View.VISIBLE);
+        //mBottomLayout4.setVisibility(View.VISIBLE);//wifi show
+        mBottomLayout5.setVisibility(View.VISIBLE);
         mBottomLayout6.setVisibility(View.VISIBLE);
+		Log.d(TAG,"onKeyDown ----> " + keyCode);
         return super.onKeyDown(keyCode, event);
     }
 
+	@Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        Log.d(TAG,"onKeyUp ----> " + keyCode);
+		if(KeyEvent.KEYCODE_VOLUME_DOWN == keyCode){
+			key_flag = key_flag|0x1;
+			if(3 == key_flag)
+				mHandler.sendEmptyMessage(MSG_KEY_TEST_OK);
+			else
+				mHandler.sendEmptyMessage(MSG_KEY_TEST_ERROR);
+		} else if(KeyEvent.KEYCODE_VOLUME_UP == keyCode){//Two power keys need to be pressed
+			key_flag = key_flag|0x2;
+
+			if(3 == key_flag)
+				mHandler.sendEmptyMessage(MSG_KEY_TEST_OK);
+			else
+				mHandler.sendEmptyMessage(MSG_KEY_TEST_ERROR);
+		}
+        return super.onKeyUp(keyCode, event);
+		//return true;
+    }
 }

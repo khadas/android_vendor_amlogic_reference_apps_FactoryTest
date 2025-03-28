@@ -214,14 +214,14 @@
 			android:layout_width="0dip"
 			android:layout_height="wrap_content"
 			android:layout_weight="1"
-			android:text="success" />
+			android:text="通过" />
 
 		<Button
 			android:id="@+id/btn_fail"
 			android:layout_width="0dip"
 			android:layout_height="wrap_content"
 			android:layout_weight="1"
-			android:text="fail" />
+			android:text="失败" />
 
 	</LinearLayout>
 

@@ -45,8 +45,9 @@ public class WriteMacActivity extends Activity {
     private boolean bIsKeyDown = false;
 
     private boolean SN_SHOW = false;
-    private boolean USID_SHOW = true;
     private boolean DEVICE_ID_SHOW = false;
+	private boolean WriteMac_ok_flag = false;
+	private boolean WriteSn_ok_flag = false;
     private int MAC_LENGTH = 17;
 
     private final int MSG_TIME = 777;
@@ -77,7 +78,7 @@ public class WriteMacActivity extends Activity {
         if (getResources().getInteger(R.integer.config_mac_length2) == nTextlen) {
             OnWriteMac(true);
         } else if (getResources().getInteger(R.integer.config_usid_length) == nTextlen) {
-            if (MainActivity.test_board.equals("VIM4")) {
+            if (MainActivity.test_board.equals("VIM4") || MainActivity.test_board.equals("VIM1S")) {
                 Vim4WriteUsid();
             } else {
                 OnWriteUsid();
@@ -112,8 +113,15 @@ public class WriteMacActivity extends Activity {
 
         m_EditMac.setText("");
         m_EditMac.requestFocus();
-        //Intent intent = new Intent(this, MainActivity.class);
-        //startActivity(intent);
+
+        Log.d(TAG, "hlm WriteMac_ok_flag:" + WriteMac_ok_flag + "WriteSn_ok_flag:" + WriteSn_ok_flag);
+		if (MainActivity.wirte_sn){
+			if(WriteMac_ok_flag && WriteSn_ok_flag)
+				this.finish();
+		}else{
+			if(WriteMac_ok_flag)
+				this.finish();
+		}
     }
 
     public void OnWriteSn() {
@@ -166,8 +174,8 @@ public class WriteMacActivity extends Activity {
         }
         Log.e(TAG, "WriteUsid=" + strUsid);
 
-        if (strUsid.length() == 10) {
-            for (int i = 0; i < 10; i++) {
+        if (strUsid.length() == getResources().getInteger(R.integer.config_usid_length)) {
+            for (int i = 0; i < getResources().getInteger(R.integer.config_usid_length); i++) {
                 int value = (int) strUsid.charAt(i);
                 if (((value > 0x2f) && (value < 0x3a)) || ((value > 0x40) && (value < 0x47)) || ((value > 0x60) && (value < 0x67))) {
                     format_err = false;
@@ -179,7 +187,7 @@ public class WriteMacActivity extends Activity {
         }
         if (!format_err) {
 			char[] charArr = strUsid.toCharArray();
-            for (int j = 0; j < 10; j++) {
+            for (int j = 0; j < getResources().getInteger(R.integer.config_usid_length); j++) {
                 int value = (int) charArr[j];
                 if ((value > 0x2f) && (value < 0x3a)) {
 					charArr[j] = (char)(value - 48);
@@ -190,13 +198,18 @@ public class WriteMacActivity extends Activity {
                 }
             }
 			strUsid = new String(charArr);
-            Tools.writeFile(Tools.Key_OTP_Usid, strUsid);
+			if(MainActivity.burn_efuse_flag)
+				Tools.writeFile(Tools.Efuse_Key_OTP_Usid, strUsid);
+			else
+				Tools.writeFile(Tools.Key_OTP_Usid, strUsid);
         }
-
+		WriteSn_ok_flag = Tools.getUsid().contains(strUsid);
         ShowUsid();
 
         m_EditMac.setText("");
         m_EditMac.requestFocus();
+		if(WriteMac_ok_flag && WriteSn_ok_flag)
+			this.finish();
     }
 
     public void OnWriteDeviceid() {
@@ -251,13 +264,18 @@ public class WriteMacActivity extends Activity {
                     Log.d(TAG, "MAC =" + mac + " format_err= " + format_err);
                     if (!format_err) {
                         if (MainActivity.test_board.equals("VIM4")) {
-                            Tools.writeFile(Tools.Key_OTP_Mac, strMac);
+                            if(MainActivity.burn_efuse_flag)
+								Tools.writeFile(Tools.Efuse_Key_OTP_Mac, mac);
+                            else
+								Tools.writeFile(Tools.Key_OTP_Mac, mac);
+							WriteMac_ok_flag = Tools.getEthMac().contains(strMac);
                         } else {
                             String cmd = String.format("setbootenv ubootenv.var.factory_mac %s", strMac);
                             Tools.setSharedPreference(mContext, strMac);
                             try {
                                 Process exeCmd = Runtime.getRuntime().exec(cmd);
                                 exeCmd.getOutputStream().flush();
+								WriteMac_ok_flag = true;
                             } catch (IOException e) {
                                 Log.e(TAG, "Excute exception: " + e.getMessage());
                             }
@@ -302,7 +320,7 @@ public class WriteMacActivity extends Activity {
         Tools.writeFile(Tools.Key_Write, strNewSn);
     }
 
-    public static void WriteUsid(String strUsid) {
+    public void WriteUsid(String strUsid) {
         Tools.writeFile(Tools.Key_Name, Tools.Key_Usid);
         String strNewUsid = CHexConver.str2HexStr(strUsid);
         Log.e(TAG, " : " + strNewUsid);
@@ -317,7 +335,7 @@ public class WriteMacActivity extends Activity {
     }
 
     public void ShowMac() {
-        if (MainActivity.test_board.equals("VIM4")) {
+        if (MainActivity.test_board.equals("VIM4") || MainActivity.test_board.equals("VIM1S")) {
             Tools.writeFile(Tools.Key_Name, Tools.Key_Mac);
             String strMac = Tools.readFile(Tools.Key_Read);
             Log.e(TAG, "strMac : " + strMac + ";  length    : " + strMac.length());
@@ -327,13 +345,13 @@ public class WriteMacActivity extends Activity {
     }
 
     public void ShowMac_OTP() {
-        if (MainActivity.test_board.equals("VIM4")) {
+        if (MainActivity.test_board.equals("VIM4") || MainActivity.test_board.equals("VIM1S")) {
             String strTmpMac = "";
             String strMac = Tools.getEthMac();
             Log.e(TAG, "strMac : " + strMac + ";  length    : " + strMac.length());
 
             int length = strMac.length();
-            if (length != 17) {
+            if (length != getResources().getInteger(R.integer.config_mac_length)) {
                 m_MacAddr.setTextColor(Color.RED);
                 m_MacAddr.setText("ERR");
 
@@ -373,6 +391,13 @@ public class WriteMacActivity extends Activity {
                 m_UsidAddr.setTextColor(Color.GREEN);
             }
             m_UsidAddr.setText(Tools.getUsid());
+        } else if (MainActivity.test_board.equals("VIM1S")) {
+            if (Tools.getUsid().equals("00000000000000")) {
+                m_UsidAddr.setTextColor(Color.RED);
+            } else {
+                m_UsidAddr.setTextColor(Color.GREEN);
+            }
+            m_UsidAddr.setText(Tools.getUsid());
         } else {
             Tools.writeFile(Tools.Key_Name, Tools.Key_Usid);
             String strUsid = Tools.readFile(Tools.Key_Read);
@@ -394,6 +419,8 @@ public class WriteMacActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.write_mac);
         mContext = this;
+		WriteMac_ok_flag = false;
+		WriteSn_ok_flag = false;
 
         m_EditMac = (EditText) findViewById(R.id.EditTextMac);
         m_EditMac.setInputType(InputType.TYPE_NULL);
@@ -420,7 +447,7 @@ public class WriteMacActivity extends Activity {
         m_DeviceidAddr_Title.setText(m_DeviceidAddr_Title.getText().toString()
                 + "\t\t\t" + getResources().getInteger(R.integer.config_deviceid_length) + getResources().getString(R.string.showLength));
 
-        if (!USID_SHOW) {
+        if (!MainActivity.wirte_sn) {
             m_UsidAddr_Title.setVisibility(View.GONE);
             m_UsidAddr.setVisibility(View.GONE);
         }

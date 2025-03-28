@@ -4,13 +4,17 @@ import android.app.Activity;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.DataOutputStream;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -49,9 +53,12 @@ public class Tools {
     public static final String Key_Name = (isGxbaby() ? "/sys/class/unifykeys/name" : "/sys/class/aml_keys/aml_keys/key_name");
     public static final String Key_Read = (isGxbaby() ? "/sys/class/unifykeys/read" : "/sys/class/aml_keys/aml_keys/key_read");
     public static final String Key_Write = (isGxbaby() ? "/sys/class/unifykeys/write" : "/sys/class/aml_keys/aml_keys/key_write");
-    public static final String Key_OTP_Mac = "/sys/class/efuse/mac";
-    public static final String Key_OTP_Usid = "/sys/class/efuse/usid";
-
+    public static final String Key_OTP_Mac = "/sys/class/mcu/mac_addr";
+    public static final String Key_OTP_Sn = "/sys/class/mcu/sn_addr";
+    public static final String Key_OTP_Usid = "/sys/class/mcu/sn_addr";
+    public static final String Efuse_Key_OTP_Mac = "/sys/class/efuse/mac";
+    public static final String Efuse_Key_OTP_Sn = "/sys/class/efuse/usid";
+    public static final String Efuse_Key_OTP_Usid = "/sys/class/efuse/usid";
     public static final String Key_Attach = "/sys/class/unifykeys/attach";
     public static final String Key_Attach_Value = "1";
 
@@ -75,6 +82,53 @@ public class Tools {
     public static final String cpu0_cpufreq = "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq";
     public static final String cpu4_cpufreq = "/sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_cur_freq";
 
+	public static String exec(String command) {
+
+	    Process process = null;
+	    BufferedReader reader = null;
+	    InputStreamReader is = null;
+	    DataOutputStream os = null;
+
+	    try {
+	        process = Runtime.getRuntime().exec("su");
+	        is = new InputStreamReader(process.getInputStream());
+	        reader = new BufferedReader(is);
+	        os = new DataOutputStream(process.getOutputStream());
+	        os.writeBytes(command + "\n");
+	        os.writeBytes("exit\n");
+	        os.flush();
+	        int read;
+	        char[] buffer = new char[4096];
+	        StringBuilder output = new StringBuilder();
+	        while ((read = reader.read(buffer)) > 0) {
+	            output.append(buffer, 0, read);
+	        }
+	        process.waitFor();
+	        return output.toString();
+	    } catch (IOException | InterruptedException e) {
+	        throw new RuntimeException(e);
+	    } finally {
+	        try {
+	            if (os != null) {
+	                os.close();
+	            }
+
+	            if (reader != null) {
+	                reader.close();
+	            }
+
+	            if (is != null) {
+	                is.close();
+	            }
+
+	            if (process != null) {
+	                process.destroy();
+	            }
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	    }
+	}
 
     public static String execCommand(String[] command) throws IOException {
         // start the ls command running
@@ -112,7 +166,7 @@ public class Tools {
                 InputStreamReader inputreader = new InputStreamReader(instream);
                 BufferedReader buffreader = new BufferedReader(inputreader);
 
-                Log.d(TAG, "buffreader = " + buffreader.toString());
+                //Log.d(TAG, "buffreader = " + buffreader.toString());
 
                 String line;
                 while ((line = buffreader.readLine()) != null) {
@@ -144,50 +198,69 @@ public class Tools {
         }
     }
 
-    public static String getEthMac() {
-        String temp = readFile(Tools.Key_OTP_Mac);
-        //Log.e("wjh", "temp="+temp);
-        String srtMac = temp.split("\\s+")[1] + ":" +
-                temp.split("\\s+")[2] + ":" +
-                temp.split("\\s+")[3] + ":" +
-                temp.split("\\s+")[4] + ":" +
-                temp.split("\\s+")[5] + ":" +
-                temp.split("\\s+")[6];
-        Log.e(TAG, "srtMac=" + srtMac);
-        return srtMac;
-    }
+	public static String getEthMac() {
+	    String temp;
+	    String srtMac = "";
+	    try {
+	        if (MainActivity.burn_efuse_flag) {
+	            temp = readFile(Tools.Efuse_Key_OTP_Mac).trim();
+	            String[] parts = temp.split("\\s+");
+	            if (parts.length >= 7) {
+	                srtMac = String.join(":", parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]);
+	            } else {
+	                Log.e(TAG, "Efuse MAC error: " + temp);
+	            }
+	        } else {
+	            temp = readFile(Tools.Key_OTP_Mac).trim();
+	            temp = temp.toLowerCase();
+	            if (temp.length() == 12) {
+	                srtMac = String.format("%s:%s:%s:%s:%s:%s",
+	                        temp.substring(0, 2),
+	                        temp.substring(2, 4),
+	                        temp.substring(4, 6),
+	                        temp.substring(6, 8),
+	                        temp.substring(8, 10),
+	                        temp.substring(10, 12));
+	            } else {
+	                Log.e(TAG, "MCU MAC length: " + temp);
+	            }
+	        }
+	    } catch (Exception e) {
+	        Log.e(TAG, "getEthMac error: " + e.getMessage());
+	    }
+	    Log.e(TAG, "srtMac=" + srtMac);
+	    return srtMac;
+	}
 
-    public static String getUsid() {
-        String temp = readFile(Tools.Key_OTP_Usid);
-        Log.e("wjh", "temp=" + temp);
-        if (temp.contains("0x00: 00 00 00 00 00 00 00 00 00 00")) {
-            return "0000000000";
-        }
-        /*String srtUsid = asciiToString(decodeHEX(temp.split("\\s+")[1])) +
-                asciiToString(decodeHEX(temp.split("\\s+")[2])) +
-                asciiToString(decodeHEX(temp.split("\\s+")[3])) +
-                asciiToString(decodeHEX(temp.split("\\s+")[4])) +
-                asciiToString(decodeHEX(temp.split("\\s+")[5])) +
-                asciiToString(decodeHEX(temp.split("\\s+")[6])) +
-                asciiToString(decodeHEX(temp.split("\\s+")[7])) +
-                asciiToString(decodeHEX(temp.split("\\s+")[8])) +
-                asciiToString(decodeHEX(temp.split("\\s+")[9])) +
-                asciiToString(decodeHEX(temp.split("\\s+")[10]));*/
 
-        String srtUsid = temp.split("\\s+")[1].substring(1,2) +
-				temp.split("\\s+")[2].substring(1,2) +
-				temp.split("\\s+")[3].substring(1,2) +
-				temp.split("\\s+")[4].substring(1,2) +
-				temp.split("\\s+")[5].substring(1,2) +
-				temp.split("\\s+")[6].substring(1,2) +
-				temp.split("\\s+")[7].substring(1,2) +
-				temp.split("\\s+")[8].substring(1,2) +
-				temp.split("\\s+")[9].substring(1,2) +
-				temp.split("\\s+")[10].substring(1,2);
+	public static String getUsid() {
+	    String srtUsid = "";
+	    try {
+	        if (MainActivity.burn_efuse_flag) {
+	            String[] parts = readFile(Tools.Efuse_Key_OTP_Usid).trim().split(":");
+	            if (parts.length > 1) {
+	                srtUsid = parts[1].trim().replaceAll("\\s+", "").toLowerCase();
+	            } else {
+	                Log.e(TAG, "[Efuse] Invalid format: " + parts);
+	            }
+	        } else {
+	            String snContent = readFile(Tools.Key_OTP_Usid)
+	                              .trim()
+	                              .toLowerCase()
+	                              .replaceAll("[^a-f0-9]", "");
+	            if (!snContent.isEmpty()) {
+	                srtUsid = snContent;
+	            } else {
+	                Log.e(TAG, "[MCU] Empty content");
+	            }
+	        }
+	    } catch (Exception e) {
+	        Log.e(TAG, "getUsid error: " + e.getMessage());
+	    }
+	    Log.e(TAG, "Final srtUsid=" + srtUsid);
+	    return srtUsid;
+	}
 
-        Log.e(TAG, "srtUsid=" + srtUsid);
-        return srtUsid;
-    }
 
     public static String decodeHEX(String hexs) {
         BigInteger bigint = new BigInteger(hexs, 16);

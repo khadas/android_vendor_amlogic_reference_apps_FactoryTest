@@ -6,6 +6,25 @@
     android:layout_gravity="bottom"
     android:orientation="horizontal"
     android:background="#000000" >
+<Button
+        android:id="@+id/btn_return"
+        android:layout_width="0dip"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="@string/btnreturnText" />
+    <Button
+        android:id="@+id/btn_Pass"
+        android:layout_width="0dip"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="@string/btnPassText" />
+
+    <Button
+        android:id="@+id/btn_Fail"
+        android:layout_width="0dip"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="@string/btnFailText" />
 
     <Button
         android:id="@+id/btn_Skip"
