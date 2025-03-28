@@ -8,25 +8,21 @@ import android.view.MotionEvent;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class TouchSurfaceView extends GLSurfaceView
-{
+public class TouchSurfaceView extends GLSurfaceView {
   private final float TOUCH_SCALE_FACTOR = 0.5625F;
   private float mPreviousX;
   private float mPreviousY;
   private float mPreviousZ;
   private CubeRenderer mRenderer = new CubeRenderer();
 
-  public TouchSurfaceView(Context paramContext)
-  {
+  public TouchSurfaceView(Context paramContext) {
     super(paramContext);
     setRenderer(this.mRenderer);
     setRenderMode(0);
   }
 
-  public boolean onKeyDown(int paramInt, KeyEvent paramKeyEvent)
-  {
-    if (paramInt == 82)
-    {
+  public boolean onKeyDown(int paramInt, KeyEvent paramKeyEvent) {
+    if (paramInt == 82) {
       this.mRenderer.mAngleZ = 0.0F;
       mRenderer.mAngleY = 0.0F;
       mRenderer.mAngleX = 0.0F;
@@ -34,16 +30,15 @@ public class TouchSurfaceView extends GLSurfaceView
     return super.onKeyDown(paramInt, paramKeyEvent);
   }
 
-  public boolean onTouchEvent(MotionEvent paramMotionEvent)
-  {
+  public boolean onTouchEvent(MotionEvent paramMotionEvent) {
     this.mRenderer.mAngleZ = 0.0F;
     mRenderer.mAngleY = 0.0F;
     mRenderer.mAngleX = 0.0F;
     return true;
   }
 
-  public void updateGyro(float paramFloat1, float paramFloat2, float paramFloat3)
-  {
+  public void updateGyro(float paramFloat1, float paramFloat2,
+                         float paramFloat3) {
     float f1 = paramFloat1 - this.mPreviousX;
     float f2 = paramFloat2 - this.mPreviousY;
     float f3 = paramFloat3 - this.mPreviousZ;
@@ -59,20 +54,15 @@ public class TouchSurfaceView extends GLSurfaceView
     this.mPreviousZ = paramFloat3;
   }
 
-  private class CubeRenderer
-    implements GLSurfaceView.Renderer
-  {
+  private class CubeRenderer implements GLSurfaceView.Renderer {
     public float mAngleX;
     public float mAngleY;
     public float mAngleZ;
     private Cube mCube = new Cube();
 
-    public CubeRenderer()
-    {
-    }
+    public CubeRenderer() {}
 
-    public void onDrawFrame(GL10 gl)
-    {
+    public void onDrawFrame(GL10 gl) {
       gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
       gl.glMatrixMode(GL10.GL_MODELVIEW);
       gl.glLoadIdentity();
@@ -85,43 +75,39 @@ public class TouchSurfaceView extends GLSurfaceView
       this.mCube.draw(gl);
     }
 
-    public void onSurfaceChanged(GL10 gl, int width, int height)
-    {
-        gl.glViewport(0, 0, width, height);
+    public void onSurfaceChanged(GL10 gl, int width, int height) {
+      gl.glViewport(0, 0, width, height);
 
-        /*
-         * Set our projection matrix. This doesn't have to be done
-         * each time we draw, but usually a new projection needs to
-         * be set when the viewport is resized.
-         */
+      /*
+       * Set our projection matrix. This doesn't have to be done
+       * each time we draw, but usually a new projection needs to
+       * be set when the viewport is resized.
+       */
 
-        float ratio = (float) width / height;
-        gl.glMatrixMode(GL10.GL_PROJECTION);
-        gl.glLoadIdentity();
-        gl.glFrustumf(-ratio, ratio, -1, 1, 1, 10);
+      float ratio = (float)width / height;
+      gl.glMatrixMode(GL10.GL_PROJECTION);
+      gl.glLoadIdentity();
+      gl.glFrustumf(-ratio, ratio, -1, 1, 1, 10);
     }
 
-    public void onSurfaceCreated(GL10 gl, EGLConfig paramEGLConfig)
-    {
-        /*
-         * By default, OpenGL enables features that improve quality
-         * but reduce performance. One might want to tweak that
-         * especially on software renderer.
-         */
-        gl.glDisable(GL10.GL_DITHER);
+    public void onSurfaceCreated(GL10 gl, EGLConfig paramEGLConfig) {
+      /*
+       * By default, OpenGL enables features that improve quality
+       * but reduce performance. One might want to tweak that
+       * especially on software renderer.
+       */
+      gl.glDisable(GL10.GL_DITHER);
 
-        /*
-         * Some one-time OpenGL initialization can be made here
-         * probably based on features of this particular context
-         */
-         gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT,
-                 GL10.GL_FASTEST);
+      /*
+       * Some one-time OpenGL initialization can be made here
+       * probably based on features of this particular context
+       */
+      gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_FASTEST);
 
-
-         gl.glClearColor(1,1,1,1);
-         gl.glEnable(GL10.GL_CULL_FACE);
-         gl.glShadeModel(GL10.GL_SMOOTH);
-         gl.glEnable(GL10.GL_DEPTH_TEST);
+      gl.glClearColor(1, 1, 1, 1);
+      gl.glEnable(GL10.GL_CULL_FACE);
+      gl.glShadeModel(GL10.GL_SMOOTH);
+      gl.glEnable(GL10.GL_DEPTH_TEST);
     }
   }
 }
