@@ -830,6 +830,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         cmd_val = "screencap -p " + path + strSn + ".png";
         Log.d(TAG, "screencap cmd_val : " + cmd_val);
         if(Tools.exec(cmd_val).contains("")){
+            Tools.exec("sync");
             m_Button_reset_MCU.setTextColor(Color.GREEN);
         }
     }
