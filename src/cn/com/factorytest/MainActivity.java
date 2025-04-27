@@ -301,7 +301,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
   //系统灯和网络灯测试时间 单位s
   int ledtime = 60;
   // videoview 全屏播放时间
-  private final long MSG_PLAY_VIDEO_TIME = 480 * 30 * 60 * 1000;
+  private final long MSG_PLAY_VIDEO_TIME = 480 * 30 * 60 * 1000L;
 
   private Context mContext;
   private BTDeviceReceiver mBTDeviceReceiver;
@@ -332,12 +332,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     else
       mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVolume, 0);
 
-    // initSurfaceView();
-    getFragmentManager()
-        .beginTransaction()
-        .replace(R.id.fragment_video, new VideoFragment())
-        .commit();
-
+    initSurfaceView();
     m_firmware_version = (TextView)findViewById(R.id.firmware_version_value);
     m_device_type = (TextView)findViewById(R.id.device_type_value);
     m_macvalue = (TextView)findViewById(R.id.mac_value);
@@ -405,9 +400,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
       m_Button_reset_MCU.setVisibility(View.GONE);
     }
 
+    mSurfaceview.setVisibility(View.GONE);
     if (!mipi_camera_test) {
       m_Button_Mipi_Camera.setVisibility(View.GONE);
-      // mSurfaceview.setVisibility(View.GONE);
     }
 
     if (!mcu_test) {
@@ -875,12 +870,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
   protected void onResume() {
     super.onResume();
     // readVersion();
-    VideoFragment fragment =
-        (VideoFragment)getFragmentManager().findFragmentById(
-            R.id.fragment_video);
-    if (fragment != null) {
-      fragment.resumePlayback();
-    }
+    initSurfaceView();
 
     m_ddr_size.setText(Tools.getMemSize());
     m_nand_size.setText(Tools.getRomSize(this));
