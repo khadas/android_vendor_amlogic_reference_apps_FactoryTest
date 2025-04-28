@@ -279,7 +279,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
   private List<ScanResult> wifiList;
 
   String configSSID = "";
-  int configLevel = 30;
+  int configLevel = 60;
 
   int wifiLevel = 0;
   String usb_path = "";
@@ -719,7 +719,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (btd != null) {
           String name = btd.getName();
           if (name != null) {
-            if (name.equals(BTSSID)) {
+            //if (name.equals(BTSSID)) {
               if (rssi > CONFIG_BT_RSSI) {
                 btLevel = -rssi;
                 BT_ERR = false;
@@ -727,7 +727,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
               } else {
                 BT_ERR = true;
               }
-            }
+            //}
             Log.d(TAG,
                   "BT Found device name= " + btd.getName() + "rssi = " + rssi);
           }
@@ -1359,13 +1359,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     Log.d(TAG, "wifi size: " + wifiList.size());
     if (wifiList != null) {
       for (ScanResult result : wifiList) {
-        if (result.SSID.equals(configSSID)) {
+        //if (result.SSID.equals(configSSID)) {
           wifiLevel = WifiManager.calculateSignalLevel(result.level, 100);
           Log.d(TAG, "wifiLevel: " + wifiLevel);
           if (wifiLevel >= configLevel) {
             bWifiScaned = true;
           }
-        }
+        //}
       }
     }
 
@@ -1846,7 +1846,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
       case MSG_WIFI_TEST_OK: {
         String strTxt = getResources().getString(R.string.Wifi_Test) + "    " +
-                        configSSID + "    " + wifiLevel + "    " +
+                        wifiLevel + "    " +
                         getResources().getString(R.string.Test_Ok);
 
         m_TextView_Wifi.setText(strTxt);
@@ -1862,7 +1862,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
       } break;
       case MSG_BT_TEST_OK: {
         String strTxt = getResources().getString(R.string.BT_Test) + "    " +
-                        BTSSID + "    " + btLevel + "    " +
+                        btLevel + "    " +
                         getResources().getString(R.string.Test_Ok);
         m_TextView_BT.setText(strTxt);
         m_TextView_BT.setTextColor(0xFF55FF55);
