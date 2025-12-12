@@ -502,6 +502,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
       // Tools.exec("chmod 777 > /sys/class/gpio_keypad/key_test");
       Tools.exec("echo 1 > /sys/class/gpio_keypad/keytest");
     }
+	//fan test
+	Tools.exec("echo 1 > /sys/class/fan/enable");
+	Tools.exec("echo 0 > /sys/class/fan/mode");
+	Tools.exec("echo 3 > /sys/class/fan/level");
+
     updateTime();
     new Thread() {
       public void run() {
