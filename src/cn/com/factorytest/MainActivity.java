@@ -66,6 +66,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.view.WindowManager;
+import android.util.DisplayMetrics;
+
 import android.text.TextUtils;
 import java.lang.reflect.Method;
 
@@ -75,6 +81,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
   public static String test_board = "VIM4";
   public static String udisk_backup = "";
+
+    public static String check_mcu_ver = "";
+    public static String check_fw_ver = "";
+
     public static boolean tfcard_test = false;
     private static boolean tfcard_test_ret = false;
 
@@ -318,6 +328,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
   private SurfaceView mSurfaceview = null;
   private SurfaceHolder mSurfaceHolder = null;
   private Camera mCamera = null;
+    private AlertDialog verAlertDialog;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -550,7 +561,39 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     m_ImageView_infoBarCode.setVisibility(View.GONE);
   }
 
+    private void checkVersionInfo() {
+        if ( (!TextUtils.isEmpty(check_mcu_ver) && !check_mcu_ver.equals(getMCUVersion())) ||
+                (!TextUtils.isEmpty(check_fw_ver) && !check_fw_ver.equals(Build.DISPLAY)) ) {
+            if (verAlertDialog == null) {
+
+                String verInfo = getResources().getString(R.string.mcu_version) + getMCUVersion()  + "\n" +
+                                 getResources().getString(R.string.require_mcu_version)  + check_mcu_ver + "\n" +
+                                 getResources().getString(R.string.firmware_version) + Build.DISPLAY  + "\n" +
+                                 getResources().getString(R.string.require_fw_version)  + check_fw_ver + "\n";
+
+                WindowManager windowManager = (WindowManager)getSystemService(Context.WINDOW_SERVICE);
+                DisplayMetrics displayMetrics = new DisplayMetrics();
+                windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle(R.string.version_error);
+                builder.setMessage(verInfo);
+                builder.setIcon(android.R.drawable.ic_dialog_alert);
+                verAlertDialog = builder.create();
+
+                WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
+                layoutParams.copyFrom(verAlertDialog.getWindow().getAttributes());
+                layoutParams.width = displayMetrics.widthPixels / 3;
+                layoutParams.height = displayMetrics.heightPixels / 3;
+                verAlertDialog.getWindow().setAttributes(layoutParams);
+            }
+            verAlertDialog.show();
+
+        }
+    }
+
     private void checkTestRetUpate() {
+        checkVersionInfo();
 
         Log.d("TESTINFO", "=================================checkTestRetUpate start===========================================");
         Log.d("TESTINFO", "tfcard_test " + tfcard_test +  " tfcard_test_ret " +  tfcard_test_ret + " RET " + (tfcard_test ? (tfcard_test & tfcard_test_ret) : true));

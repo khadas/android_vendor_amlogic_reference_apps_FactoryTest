@@ -16,6 +16,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 
 public class FactoryReceiver extends BroadcastReceiver {
   private static final String TAG = Tools.TAG;
@@ -170,10 +173,11 @@ public class FactoryReceiver extends BroadcastReceiver {
           }
           return;
         }
-
+        Log.e(TAG, "factorytest=[" + rec + "]");
         if (setTestBoard(rec)) {
           setTestFlags(rec);
         }
+        getCheckVersionInfo(fullpath);
         startMainActivity(context);
       } catch (IOException e) {
         e.printStackTrace();
@@ -182,6 +186,7 @@ public class FactoryReceiver extends BroadcastReceiver {
   }
 
   private boolean setTestBoard(String rec) {
+        boolean ret = true;
     if (rec.contains("test_board=VIM1S")) {
       MainActivity.test_board = "VIM1S";
     } else if (rec.contains("test_board=VIM2")) {
@@ -192,7 +197,7 @@ public class FactoryReceiver extends BroadcastReceiver {
       MainActivity.test_board = "VIM4";
     } else {
       MainActivity.test_board = "VIM4";
-      setTestFlags(rec);
+      //setTestFlags(rec);
       // tfcard_test
       MainActivity.tfcard_test = true;
       // usb20_test
@@ -220,9 +225,9 @@ public class FactoryReceiver extends BroadcastReceiver {
       MainActivity.wirte_mac = true;
       MainActivity.reset_mcu = true;
       MainActivity.mic_test = true;
-      return false;
+      ret = false;
     }
-    return true;
+    return ret;
   }
 
   private void setTestFlags(String rec) {
@@ -252,6 +257,73 @@ public class FactoryReceiver extends BroadcastReceiver {
     MainActivity.tp_test = rec.contains("tp_test=1");
     MainActivity.key_test = rec.contains("key_test=1");
   }
+
+    private void getCheckVersionInfo(String filePath) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                Log.e(TAG, "line:" + line);
+                if (line != null && !line.isEmpty()) {
+                    if (line.toLowerCase().contains("mcu_ver")) {
+                        MainActivity.check_mcu_ver = extractMcuVersion(line);
+                        Log.e(TAG, "Get mcu version:" + MainActivity.check_mcu_ver);
+                    } else if (line.toLowerCase().contains("fw_ver")) {
+                        MainActivity.check_fw_ver = extractFwVersion(line);
+                        Log.e(TAG, "Get fw version:" + MainActivity.check_fw_ver);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String extractMcuVersion(String input) {
+        if (input == null || input.isEmpty()) {
+            return null;
+        }
+        Pattern pattern1 = Pattern.compile("TEST_MCU_VER\\s*=\\s*(\\S*)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher1 = pattern1.matcher(input);
+
+        if (matcher1.find()) {
+            String value = matcher1.group(1).trim();
+            return value.isEmpty() ? "" : value;
+        }
+
+        Pattern pattern2 = Pattern.compile("mcu_ver\\s*=\\s*(\\S*)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher2 = pattern2.matcher(input);
+
+        if (matcher2.find()) {
+            String value = matcher2.group(1).trim();
+            return value.isEmpty() ? "" : value;
+        }
+
+        return "";
+    }
+
+    private String extractFwVersion(String input) {
+        if (input == null || input.isEmpty()) {
+            return null;
+        }
+        Pattern pattern1 = Pattern.compile("TEST_FW_VER\\s*=\\s*(\\S*)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher1 = pattern1.matcher(input);
+
+        if (matcher1.find()) {
+            String value = matcher1.group(1).trim();
+            return value.isEmpty() ? "" : value;
+        }
+
+        Pattern pattern2 = Pattern.compile("fw_ver\\s*=\\s*(\\S*)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher2 = pattern2.matcher(input);
+
+        if (matcher2.find()) {
+            String value = matcher2.group(1).trim();
+            return value.isEmpty() ? "" : value;
+        }
+
+        return "";
+    }
+
 
   private void setAgeingTime(String rec) {
     Pattern pattern = Pattern.compile("ageing_time=(\\d+)");
